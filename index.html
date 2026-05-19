@@ -971,7 +971,7 @@ function initHero(){
   })();
 
   // typewriter
-  const ROLES=['Application Security Engineer','Security Engineer','Penetration Tester','API Security Specialist','Bug Bounty Researcher','Fintech Security Lead'];
+  const ROLES=['Application Security Engineer','Security Engineer','Penetration Tester','API Security Specialist','Bug Bounty Researcher','Mobile Security Enthusiast','Cybersecurity Analyst','Offensive Security Researcher','Cloud Security Practitioner','Threat Intelligence Analyst'];
   let ri=0,ci=0,del=false;const tw=document.getElementById('tw');
   function tick(){const r=ROLES[ri];if(!del){tw.textContent=r.slice(0,++ci);if(ci>=r.length){del=true;setTimeout(tick,1800);return;}}else{tw.textContent=r.slice(0,--ci);if(ci<=0){del=false;ri=(ri+1)%ROLES.length;setTimeout(tick,400);return;}}setTimeout(tick,del?35:75);}
   setTimeout(tick,600);
@@ -1000,11 +1000,13 @@ function initGlobe(){
   const R=Math.min(W,H)*0.36; // sphere radius
 
   const SKILLS=[
-    'AppSec','API Sec','Pentest','Burp Suite','Nmap','SQLMap',
-    'Nuclei','Wazuh','AWS IAM','KMS','OPNsense','Suricata',
-    'WireGuard','Python','Bash','OSINT','IDOR','LFI',
-    'XSS','SQLi','JWT','DLP','SIEM','ISO 27001',
-  ];
+'AppSec','API Security','Web Pentest','Burp Suite','Recon','Vuln Assessment',
+'Nuclei','AWS IAM','AWS KMS','Firewall Hardening','Traffic Analysis',
+'WireGuard','Python','Bash','OSINT','IDOR','LFI',
+'XSS','SQLi','JWT','Config Review','VAPT',
+'Linux Hardening','Threat Modeling','Secure SDLC','Auth Testing','OWASP Top 10','ISO 27001',
+'Security Research','Reporting'
+];
 
   // Distribute points on sphere using golden spiral
   const points=SKILLS.map((label,i)=>{
