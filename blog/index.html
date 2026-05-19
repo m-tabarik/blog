@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="M. Tabarik Asif — Security Research & HTB Writeups. Technical writeups from HackTheBox machines, bug bounty research, and security engineering.">
+<meta property="og:title" content="Field Notes — Tabarik Asif">
+<meta property="og:description" content="Technical writeups from HackTheBox machines, bug bounty research, and security engineering.">
+<meta property="og:url" content="https://tabarik.dev/blog/">
+<title>Field Notes — Tabarik Asif</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='38' stroke='%2300FFE0' stroke-width='3' fill='none'/><line x1='50' y1='12' x2='50' y2='88' stroke='%2300FFE0' stroke-width='2'/><line x1='12' y1='50' x2='88' y2='50' stroke='%2300FFE0' stroke-width='2'/><circle cx='50' cy='50' r='4' fill='%2300FFE0'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Bebas+Neue&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════
+   DESIGN TOKENS
+══════════════════════════════════════ */
+:root {
+  --c:    #00FFE0;
+  --c2:   rgba(0,255,224,.07);
+  --bg:   #050505;
+  --bg2:  #090909;
+  --bg3:  #0f0f0f;
+  --red:  #FF453A;
+  --amb:  #FFD60A;
+  --grn:  #30D158;
+  --blu:  #0A84FF;
+  --t1:   #ffffff;
+  --t2:   #e8e8e8;
+  --t3:   #c0c0c0;
+  --br:   rgba(0,255,224,.14);
+  --br2:  rgba(0,255,224,.32);
+  --glow: 0 0 30px rgba(0,255,224,.18);
+  --fn:   'JetBrains Mono', monospace;
+  --fd:   'Bebas Neue', sans-serif;
+  --fs:   'Syne', sans-serif;
+}
+
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+
+body {
+  background:var(--bg);
+  color:var(--t1);
+  font-family:var(--fn);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+body::after {
+  content:''; position:fixed; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");
+  opacity:.03; pointer-events:none; z-index:9000;
+}
+
+/* SCROLL PROGRESS */
+#spb { position:fixed; top:0; left:0; height:2px; background:var(--c); z-index:9999; width:0; box-shadow:0 0 8px var(--c); transition:width .1s; }
+
+/* ── CURSOR ─────────────────────────── */
+#cur,#cur2 { display:none; }
+@media(hover:hover) and (pointer:fine){
+  body { cursor:none; }
+  #cur { display:block; position:fixed; width:30px; height:30px; border:1px solid var(--c); border-radius:50%; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); transition:width .18s,height .18s; mix-blend-mode:exclusion; }
+  #cur2 { display:block; position:fixed; width:5px; height:5px; background:var(--c); border-radius:50%; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); }
+}
+
+/* ── NAV ────────────────────────────── */
+nav { position:fixed; top:0; left:0; right:0; z-index:1000; display:flex; justify-content:space-between; align-items:center; padding:20px 8vw; transition:background .4s,border .4s; }
+nav.stuck { background:rgba(5,5,5,.96); border-bottom:1px solid var(--br); backdrop-filter:blur(16px); }
+.nav-logo { font-family:var(--fd); font-size:1.5rem; letter-spacing:4px; color:var(--c); text-decoration:none; }
+.nav-links { display:flex; gap:28px; list-style:none; }
+.nav-links a { font-size:12px; letter-spacing:2.5px; text-transform:uppercase; color:var(--t1); text-decoration:none; transition:color .2s; opacity:.8; }
+.nav-links a:hover,.nav-links a.act { color:var(--c); opacity:1; }
+
+/* ── HERO ───────────────────────────── */
+.blog-hero { min-height:60vh; display:flex; flex-direction:column; justify-content:flex-end; padding:130px 8vw 80px; position:relative; overflow:hidden; border-bottom:1px solid var(--br); }
+.hero-eyebrow { font-size:11px; letter-spacing:4px; color:var(--c); text-transform:uppercase; margin-bottom:20px; opacity:0; animation:fadeUp .8s .1s forwards; }
+.hero-title { font-family:var(--fd); font-size:clamp(5rem,14vw,12rem); line-height:.85; letter-spacing:3px; color:var(--c); text-shadow:0 0 80px rgba(0,255,224,.12); opacity:0; animation:fadeUp .8s .25s forwards; }
+.hero-subtitle { font-family:var(--fs); font-size:clamp(.95rem,1.6vw,1.2rem); color:var(--t2); max-width:620px; line-height:1.8; margin-top:24px; opacity:0; animation:fadeUp .8s .4s forwards; }
+.hero-stats { display:flex; gap:48px; margin-top:40px; flex-wrap:wrap; opacity:0; animation:fadeUp .8s .55s forwards; }
+.hstat-n { font-family:var(--fd); font-size:2.4rem; color:var(--c); line-height:1; text-shadow:var(--glow); }
+.hstat-l { font-size:10px; letter-spacing:2.5px; color:var(--t3); text-transform:uppercase; margin-top:4px; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
+
+/* ── FILTER BAR ─────────────────────── */
+.filter-bar { padding:28px 8vw; border-bottom:1px solid var(--br); display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--bg2); position:sticky; top:62px; z-index:900; }
+.filter-lbl { font-size:10px; letter-spacing:3px; color:var(--t3); text-transform:uppercase; margin-right:4px; }
+.fbtn { font-family:var(--fn); font-size:10px; letter-spacing:2px; text-transform:uppercase; background:transparent; border:1px solid rgba(255,255,255,.12); color:var(--t3); padding:7px 16px; cursor:pointer; transition:.2s; }
+.fbtn:hover { border-color:var(--c); color:var(--c); }
+.fbtn.active { border-color:var(--c); color:var(--c); background:rgba(0,255,224,.06); }
+
+/* ── CARDS GRID ─────────────────────── */
+.cards-wrap { padding:0 8vw 100px; }
+.posts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--br); margin-top:1px; }
+.pcard { background:var(--bg2); padding:36px 28px; position:relative; overflow:hidden; transition:background .3s; text-decoration:none; display:block; color:inherit; }
+.pcard:hover { background:var(--bg3); }
+.pcard::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--c),transparent); transform:scaleX(0); transform-origin:left; transition:.5s; }
+.pcard:hover::before { transform:scaleX(1); }
+.pcard.hidden { display:none; }
+
+.pcard-meta { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.pcard-date { font-size:10px; letter-spacing:2px; color:var(--t3); }
+.badge { font-size:9px; letter-spacing:2px; padding:3px 8px; border:1px solid; display:inline-block; }
+.badge-easy   { border-color:rgba(48,209,88,.35);  color:var(--grn); }
+.badge-medium { border-color:rgba(255,214,10,.35); color:var(--amb); }
+.badge-hard   { border-color:rgba(255,69,58,.35);  color:var(--red); }
+.badge-win    { border-color:rgba(10,132,255,.35); color:var(--blu); }
+.badge-linux  { border-color:rgba(255,255,255,.15); color:var(--t3); }
+
+.pcard-title { font-family:var(--fd); font-size:2.6rem; letter-spacing:2px; color:var(--c); line-height:1; margin-bottom:12px; }
+.pcard-desc  { font-size:13px; line-height:1.75; color:var(--t2); margin-bottom:14px; }
+.pcard-cve   { font-size:10px; letter-spacing:1.5px; color:var(--red); margin-bottom:12px; }
+.pcard-tags  { display:flex; flex-wrap:wrap; gap:6px; }
+.ptag { font-size:10px; letter-spacing:1px; padding:3px 9px; border:1px solid rgba(0,255,224,.18); color:var(--c); }
+
+/* ── FOOTER ─────────────────────────── */
+footer { padding:36px 8vw; border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
+.fb { font-family:var(--fd); font-size:1.2rem; letter-spacing:4px; color:var(--c); }
+.fc2 { font-size:12px; color:var(--t3); letter-spacing:1px; }
+.ft { font-size:11px; color:#1a1a1a; letter-spacing:1px; }
+
+/* ── RESPONSIVE ─────────────────────── */
+@media(max-width:1100px){ .posts-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:768px){
+  nav { padding:16px 6vw; }
+  .nav-links { display:none; }
+  .blog-hero { padding:110px 6vw 60px; }
+  .cards-wrap { padding:0 6vw 80px; }
+  .posts-grid { grid-template-columns:1fr; }
+  .filter-bar { padding:20px 6vw; top:54px; }
+  .hero-stats { gap:28px; }
+}
+</style>
+</head>
+<body>
+
+<div id="spb"></div>
+<div id="cur"></div>
+<div id="cur2"></div>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="../" class="nav-logo">TABARIK</a>
+  <ul class="nav-links">
+    <li><a href="../">Home</a></li>
+    <li><a href="../#projects">Portfolio</a></li>
+    <li><a href="./" class="act">Blog</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<header class="blog-hero">
+  <div class="hero-eyebrow">// Security Research &amp; HTB Writeups</div>
+  <div class="hero-title">FIELD NOTES</div>
+  <div class="hero-subtitle">Technical writeups from HackTheBox machines, bug bounty research, and security engineering. No fluff — just methodology, findings, and lessons.</div>
+  <div class="hero-stats">
+    <div><div class="hstat-n">22</div><div class="hstat-l">Writeups</div></div>
+    <div><div class="hstat-n">2</div><div class="hstat-l">Platforms</div></div>
+    <div><div class="hstat-n" style="font-size:1.6rem;letter-spacing:1px;">PRO HACKER</div><div class="hstat-l">HTB Rank</div></div>
+  </div>
+</header>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <span class="filter-lbl">FILTER:</span>
+  <button class="fbtn active" data-filter="all">ALL</button>
+  <button class="fbtn" data-filter="linux">LINUX</button>
+  <button class="fbtn" data-filter="windows">WINDOWS</button>
+  <button class="fbtn" data-filter="bug-bounty">BUG BOUNTY</button>
+  <button class="fbtn" data-filter="security-engineering">SECURITY ENGINEERING</button>
+</div>
+
+<!-- CARDS GRID -->
+<div class="cards-wrap">
+<div class="posts-grid" id="postsGrid">
+
+  <!-- 1. Reset -->
+  <a href="posts/reset.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">May 15 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Reset</div>
+    <div class="pcard-desc">Abuse of password reset token predictability and file write to gain foothold, service exploitation for root</div>
+    <div class="pcard-tags"><span class="ptag">Password Reset</span><span class="ptag">Token Abuse</span><span class="ptag">Linux</span></div>
+  </a>
+
+  <!-- 2. Expressway -->
+  <a href="posts/expressway.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">May 12 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Expressway</div>
+    <div class="pcard-desc">IKEv1 aggressive mode PSK cracking via ike-scan then sudo CVE-2025-32463 for root</div>
+    <div class="pcard-cve">CVE-2025-32463</div>
+    <div class="pcard-tags"><span class="ptag">VPN</span><span class="ptag">IKE</span><span class="ptag">sudo</span></div>
+  </a>
+
+  <!-- 3. Editor -->
+  <a href="posts/editor.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">May 08 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Editor</div>
+    <div class="pcard-desc">XWiki SSTI via CVE-2025-24893 for foothold, ndsudo PATH hijack for privilege escalation</div>
+    <div class="pcard-cve">CVE-2025-24893</div>
+    <div class="pcard-tags"><span class="ptag">SSTI</span><span class="ptag">XWiki</span><span class="ptag">PATH Hijack</span></div>
+  </a>
+
+  <!-- 4. Dog -->
+  <a href="posts/dog.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">May 04 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Dog</div>
+    <div class="pcard-desc">Backdrop CMS unauthenticated code exec via bee eval module, git credential leak for root</div>
+    <div class="pcard-tags"><span class="ptag">CMS</span><span class="ptag">RCE</span><span class="ptag">Git</span></div>
+  </a>
+
+  <!-- 5. LinkVortex -->
+  <a href="posts/linkvortex.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Apr 30 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">LinkVortex</div>
+    <div class="pcard-desc">Ghost CMS arbitrary file read via CVE-2023-40028, symlink TOCTOU race for credential access</div>
+    <div class="pcard-cve">CVE-2023-40028</div>
+    <div class="pcard-tags"><span class="ptag">Ghost CMS</span><span class="ptag">TOCTOU</span><span class="ptag">LFI</span></div>
+  </a>
+
+  <!-- 6. BoardLight -->
+  <a href="posts/boardlight.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Apr 26 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">BoardLight</div>
+    <div class="pcard-desc">Dolibarr ERP CVE-2023-30253 PHP injection for foothold, Enlightenment SUID binary for root</div>
+    <div class="pcard-cve">CVE-2023-30253</div>
+    <div class="pcard-tags"><span class="ptag">CVE</span><span class="ptag">SUID</span><span class="ptag">PHP Injection</span></div>
+  </a>
+
+  <!-- 7. Broker -->
+  <a href="posts/broker.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Apr 06 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Broker</div>
+    <div class="pcard-desc">Apache ActiveMQ CVE-2023-46604 ClassInfo deserialization RCE, sudo nginx GTFO for root</div>
+    <div class="pcard-cve">CVE-2023-46604</div>
+    <div class="pcard-tags"><span class="ptag">ActiveMQ</span><span class="ptag">Deserialization</span><span class="ptag">RCE</span></div>
+  </a>
+
+  <!-- 8. CozyHosting -->
+  <a href="posts/cozyhosting.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Apr 02 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">CozyHosting</div>
+    <div class="pcard-desc">Spring Boot Actuator exposes active sessions, command injection via SSH username field, postgres credential dump</div>
+    <div class="pcard-tags"><span class="ptag">Spring Boot</span><span class="ptag">RCE</span><span class="ptag">Command Injection</span></div>
+  </a>
+
+  <!-- 9. TwoMillion -->
+  <a href="posts/twomillion.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Mar 29 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">TwoMillion</div>
+    <div class="pcard-desc">Invite code generation via JS reverse engineering, API v1 admin endpoint abuse, OverlayFS CVE for root</div>
+    <div class="pcard-tags"><span class="ptag">API Abuse</span><span class="ptag">JS Reversing</span><span class="ptag">Kernel CVE</span></div>
+  </a>
+
+  <!-- 10. Sau -->
+  <a href="posts/sau.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Mar 25 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Sau</div>
+    <div class="pcard-desc">Request Baskets SSRF via CVE-2023-27163 to reach internal Maltrail service with unauthenticated RCE</div>
+    <div class="pcard-cve">CVE-2023-27163</div>
+    <div class="pcard-tags"><span class="ptag">SSRF</span><span class="ptag">SSRF Chain</span><span class="ptag">RCE</span></div>
+  </a>
+
+  <!-- 11. Keeper -->
+  <a href="posts/keeper.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Mar 21 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Keeper</div>
+    <div class="pcard-desc">Default credentials on Request Tracker, KeePass memory dump CVE-2023-32784 leaks master password</div>
+    <div class="pcard-cve">CVE-2023-32784</div>
+    <div class="pcard-tags"><span class="ptag">Default Creds</span><span class="ptag">KeePass</span><span class="ptag">Memory Dump</span></div>
+  </a>
+
+  <!-- 12. Busqueda -->
+  <a href="posts/busqueda.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Mar 17 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Busqueda</div>
+    <div class="pcard-desc">Searchor CLI eval() command injection via crafted search query, sudo script git config hijack for root</div>
+    <div class="pcard-tags"><span class="ptag">Command Injection</span><span class="ptag">eval()</span><span class="ptag">sudo</span></div>
+  </a>
+
+  <!-- 13. Soccer -->
+  <a href="posts/soccer.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Mar 13 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Soccer</div>
+    <div class="pcard-desc">Tiny File Manager default creds for webshell upload, WebSocket-based blind SQLi, doas privesc</div>
+    <div class="pcard-tags"><span class="ptag">SQLi</span><span class="ptag">WebSocket</span><span class="ptag">File Upload</span></div>
+  </a>
+
+  <!-- 14. Cap -->
+  <a href="posts/cap.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Mar 09 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Cap</div>
+    <div class="pcard-desc">IDOR on PCAP download endpoint leaks FTP plaintext credentials, Python cap_setuid privilege escalation</div>
+    <div class="pcard-tags"><span class="ptag">IDOR</span><span class="ptag">PCAP</span><span class="ptag">Linux Capabilities</span></div>
+  </a>
+
+  <!-- 15. Help -->
+  <a href="posts/help.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Mar 05 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Help</div>
+    <div class="pcard-desc">HelpDeskZ unauthenticated file upload via timestamp bypass, Linux kernel dirty cow variant for root</div>
+    <div class="pcard-tags"><span class="ptag">File Upload</span><span class="ptag">Kernel Exploit</span><span class="ptag">HelpDeskZ</span></div>
+  </a>
+
+  <!-- 16. Bashed -->
+  <a href="posts/bashed.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Mar 01 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Bashed</div>
+    <div class="pcard-desc">phpbash webshell left exposed on dev server, sudo scriptmanager abuse and cron-based privesc</div>
+    <div class="pcard-tags"><span class="ptag">Webshell</span><span class="ptag">sudo</span><span class="ptag">Cron</span></div>
+  </a>
+
+  <!-- 17. Shocker -->
+  <a href="posts/shocker.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Feb 24 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Shocker</div>
+    <div class="pcard-desc">Shellshock CGI bash vulnerability via User-Agent header, sudo perl GTFO for root</div>
+    <div class="pcard-tags"><span class="ptag">Shellshock</span><span class="ptag">CGI</span><span class="ptag">sudo</span></div>
+  </a>
+
+  <!-- 18. Lame -->
+  <a href="posts/lame.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Feb 20 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Lame</div>
+    <div class="pcard-desc">Samba CVE-2007-2447 username map script command injection gives direct root shell — classic entry box</div>
+    <div class="pcard-cve">CVE-2007-2447</div>
+    <div class="pcard-tags"><span class="ptag">Samba</span><span class="ptag">CVE</span><span class="ptag">RCE</span></div>
+  </a>
+
+  <!-- 19. Support -->
+  <a href="posts/support.html" class="pcard" data-cat="windows">
+    <div class="pcard-meta">
+      <span class="pcard-date">Apr 14 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-win">WINDOWS</span>
+    </div>
+    <div class="pcard-title">Support</div>
+    <div class="pcard-desc">LDAP credentials hardcoded in .NET binary, Resource-Based Constrained Delegation (RBCD) for Domain Admin</div>
+    <div class="pcard-tags"><span class="ptag">Active Directory</span><span class="ptag">RBCD</span><span class="ptag">.NET Reversing</span></div>
+  </a>
+
+  <!-- 20. Mailing -->
+  <a href="posts/mailing.html" class="pcard" data-cat="windows">
+    <div class="pcard-meta">
+      <span class="pcard-date">Apr 10 2026</span>
+      <span class="badge badge-easy">EASY</span>
+      <span class="badge badge-win">WINDOWS</span>
+    </div>
+    <div class="pcard-title">Mailing</div>
+    <div class="pcard-desc">hMailServer open relay for phishing, Outlook MonikerLink CVE-2024-21413 for NTLM capture and relay</div>
+    <div class="pcard-cve">CVE-2024-21413</div>
+    <div class="pcard-tags"><span class="ptag">Mail Server</span><span class="ptag">NTLM Relay</span><span class="ptag">Outlook</span></div>
+  </a>
+
+  <!-- 21. Intentions -->
+  <a href="posts/intentions.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Apr 18 2026</span>
+      <span class="badge badge-hard">HARD</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Intentions</div>
+    <div class="pcard-desc">API mass assignment to escalate user role, ImageMagick MSL file write RCE, GitHub Actions token abuse for root</div>
+    <div class="pcard-tags"><span class="ptag">Mass Assignment</span><span class="ptag">ImageMagick</span><span class="ptag">CI/CD Abuse</span></div>
+  </a>
+
+  <!-- 22. Monitored -->
+  <a href="posts/monitored.html" class="pcard" data-cat="linux">
+    <div class="pcard-meta">
+      <span class="pcard-date">Apr 22 2026</span>
+      <span class="badge badge-medium">MEDIUM</span>
+      <span class="badge badge-linux">LINUX</span>
+    </div>
+    <div class="pcard-title">Monitored</div>
+    <div class="pcard-desc">SNMP community string leaks service account credentials, Nagios XI authenticated SQLi, npcd binary hijack</div>
+    <div class="pcard-tags"><span class="ptag">SNMP</span><span class="ptag">SQLi</span><span class="ptag">Service Hijack</span></div>
+  </a>
+
+</div><!-- /posts-grid -->
+</div><!-- /cards-wrap -->
+
+<footer>
+  <a href="../" class="fb" style="text-decoration:none;">TABARIK.DEV</a>
+  <div class="fc2">© 2025 M. Tabarik Asif — All rights reserved.</div>
+  <div class="ft">Built with caffeine &amp; 0days.</div>
+</footer>
+
+<script>
+/* CURSOR */
+const cur=document.getElementById('cur'),cur2=document.getElementById('cur2');
+let mx=0,my=0,rx=0,ry=0;
+if(window.matchMedia('(hover:hover) and (pointer:fine)').matches){
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+  (function lp(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;cur2.style.left=rx+'px';cur2.style.top=ry+'px';requestAnimationFrame(lp);})();
+  document.querySelectorAll('a,button,.pcard').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{cur.style.width='50px';cur.style.height='50px';});
+    el.addEventListener('mouseleave',()=>{cur.style.width='30px';cur.style.height='30px';});
+  });
+}
+
+/* SCROLL PROGRESS + NAV */
+window.addEventListener('scroll',()=>{
+  const pct=scrollY/(document.documentElement.scrollHeight-innerHeight)*100;
+  document.getElementById('spb').style.width=pct+'%';
+  document.getElementById('nav').classList.toggle('stuck',scrollY>50);
+});
+
+/* FILTER */
+(function(){
+  const btns=document.querySelectorAll('.fbtn');
+  const cards=document.querySelectorAll('.pcard');
+  const grid=document.getElementById('postsGrid');
+
+  btns.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      btns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const f=btn.dataset.filter;
+      let visCount=0;
+      cards.forEach(c=>{
+        const show=f==='all'||c.dataset.cat===f;
+        c.classList.toggle('hidden',!show);
+        if(show) visCount++;
+      });
+      grid.style.background=visCount?'var(--br)':'transparent';
+    });
+  });
+})();
+
+/* CONSOLE EGG */
+console.log('%c\nFIELD NOTES // TABARIK.DEV\n','color:#00FFE0;font-family:monospace;font-size:14px;font-weight:bold;');
+console.log('%cSecurity Research & HTB Writeups','color:#c0c0c0;font-size:11px;');
+</script>
+</body>
+</html>
